@@ -24,29 +24,16 @@
 
 ## 界面预览
 
-### 拍餐识别
-
-拍照、相册与历史复用，识别前可以补充实际份量。
-
-<p align="center"><img src="docs/assets/screenshots/capture.png" width="520" alt="拍餐识别"></p>
-
-### 今日摄入
-
-集中查看热量和主要营养素的当天进度。
-
-<p align="center"><img src="docs/assets/screenshots/today.png" width="520" alt="今日摄入"></p>
-
-### 饮食记录
-
-按日历回顾已经确认的餐食。
-
-<p align="center"><img src="docs/assets/screenshots/records.png" width="520" alt="饮食记录"></p>
-
-### 模型设置
-
-配置模型、导出日志或管理本地数据。
-
-<p align="center"><img src="docs/assets/screenshots/settings.png" width="520" alt="模型设置"></p>
+<table>
+  <tr>
+    <td align="center"><a href="docs/assets/screenshots/capture.png"><img src="docs/assets/screenshots/capture.png" width="240" alt="拍餐识别"></a><br><strong>拍餐识别</strong><br><sub>拍照、相册与历史复用</sub></td>
+    <td align="center"><a href="docs/assets/screenshots/today.png"><img src="docs/assets/screenshots/today.png" width="240" alt="今日摄入"></a><br><strong>今日摄入</strong><br><sub>查看当天营养进度</sub></td>
+  </tr>
+  <tr>
+    <td align="center"><a href="docs/assets/screenshots/records.png"><img src="docs/assets/screenshots/records.png" width="240" alt="饮食记录"></a><br><strong>饮食记录</strong><br><sub>按日历回顾餐食</sub></td>
+    <td align="center"><a href="docs/assets/screenshots/settings.png"><img src="docs/assets/screenshots/settings.png" width="240" alt="模型设置"></a><br><strong>模型设置</strong><br><sub>配置模型与本地数据</sub></td>
+  </tr>
+</table>
 
 > 截图使用虚构演示内容，不包含真实用户信息。
 
