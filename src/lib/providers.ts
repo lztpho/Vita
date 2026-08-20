@@ -5,7 +5,11 @@ export type ProviderPresetId =
   | 'openai'
   | 'anthropic'
   | 'gemini'
+  | 'longcat'
   | 'qwen'
+  | 'hunyuan'
+  | 'zhipu'
+  | 'volcengine'
   | 'minimax'
   | 'siliconflow'
   | 'openrouter'
@@ -17,6 +21,8 @@ export interface ProviderPreset {
   protocol: ProviderProtocol;
   baseUrl: string;
   modelPlaceholder: string;
+  suggestedModels?: string[];
+  statusNote?: string;
 }
 
 export const PROVIDER_PRESETS: ProviderPreset[] = [
@@ -33,8 +39,26 @@ export const PROVIDER_PRESETS: ProviderPreset[] = [
     modelPlaceholder: '填写支持图片输入的 Gemini 模型 ID',
   },
   {
+    id: 'longcat', name: '美团 LongCat（API 图片能力待开放）', protocol: 'openai', baseUrl: 'https://api.longcat.chat/openai/v1',
+    modelPlaceholder: '例如：LongCat-Flash-Omni（需服务端开放图片输入）',
+    statusNote: 'LongCat 已开源多模态模型，但当前官方云 API 文档仍仅支持文本输入。Vita 会拒绝 LongCat-2.0 等纯文本模型；待官方开放 vision/omni API 后可直接填写对应模型 ID。',
+  },
+  {
     id: 'qwen', name: '阿里云百炼 / 通义千问', protocol: 'openai', baseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
-    modelPlaceholder: '例如：qwen-vl-max',
+    modelPlaceholder: '例如：qwen-vl-max', suggestedModels: ['qwen-vl-max'],
+  },
+  {
+    id: 'hunyuan', name: '腾讯混元', protocol: 'openai', baseUrl: 'https://api.hunyuan.cloud.tencent.com/v1',
+    modelPlaceholder: '例如：hunyuan-vision-1.5-instruct',
+    suggestedModels: ['hunyuan-vision-1.5-instruct', 'hunyuan-t1-vision-20250916'],
+  },
+  {
+    id: 'zhipu', name: '智谱 GLM', protocol: 'openai', baseUrl: 'https://open.bigmodel.cn/api/paas/v4',
+    modelPlaceholder: '例如：glm-5v-turbo', suggestedModels: ['glm-5v-turbo', 'glm-4.5v'],
+  },
+  {
+    id: 'volcengine', name: '火山方舟 / 豆包', protocol: 'openai', baseUrl: 'https://ark.cn-beijing.volces.com/api/v3',
+    modelPlaceholder: '例如：doubao-seed-2-0-lite-260215', suggestedModels: ['doubao-seed-2-0-lite-260215'],
   },
   {
     id: 'minimax', name: 'MiniMax', protocol: 'openai', baseUrl: 'https://api.minimaxi.com/v1',

@@ -10,6 +10,18 @@ Vita 是一款本地优先、由用户自带云模型 API 的 Android 营养助�
 - 面向一般健康成人的本地确定性目标计算；年龄、身高、体重和资格筛查不发送给模型。
 - 仅保留当前咨询会话；新建会话会删除旧会话和消息。
 - 支持 OpenAI-compatible 与 Anthropic Messages 云接口，以及自定义 HTTPS 公网端点。
+- 内置阿里云百炼、腾讯混元、智谱 GLM、火山方舟/豆包、MiniMax、硅基流动等模型厂商预设。
+
+## 模型厂商
+
+Vita 只把能够接收图片并返回文本的模型列为可用多模态模型。当前国产厂商推荐填写：
+
+- 腾讯混元：`hunyuan-vision-1.5-instruct`
+- 智谱 GLM：`glm-5v-turbo`
+- 火山方舟/豆包：`doubao-seed-2-0-lite-260215`
+- 阿里云百炼：`qwen-vl-max` 或厂商当前提供的 Qwen VL/Omni 模型
+
+LongCat 预设使用官方 `https://api.longcat.chat/openai/v1`。LongCat 模型家族已有多模态模型，但截至当前官方云 API 的 [Chat Completions 文档](https://longcat.ai/platform/docs/zh/api/chat) 仍注明仅支持文本输入，且只列出 `LongCat-2.0`。因此 Vita 不会把 `LongCat-2.0` 当成拍餐视觉模型；当官方 API 开放带有 vision/omni 能力的模型后，模型列表会自动接受它。
 
 ## 安全与隐私边界
 

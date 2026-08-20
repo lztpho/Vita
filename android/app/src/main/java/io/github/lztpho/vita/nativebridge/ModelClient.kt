@@ -45,6 +45,7 @@ class ModelClient(private val secureStore: SecureStore) {
         val base = NetworkPolicy.validateForRequest(input.getString("baseUrl"))
         val vision = input.optString("visionModel").trim()
         require(vision.isNotEmpty()) { "请填写视觉模型" }
+        ProviderCompatibility.validateSelectedModel(base.toString(), vision)
         val saved = JSONObject()
             .put("protocol", protocol)
             .put("baseUrl", base.toString().trimEnd('/'))
@@ -106,9 +107,7 @@ class ModelClient(private val secureStore: SecureStore) {
         val baseUrl = NetworkPolicy.validate(rawBaseUrl).toString().trimEnd('/')
         val key = secureStore.apiKey(baseUrl)
         require(key.isNotBlank()) { "请先填写 API Key" }
-        val listUrl = endpoint(baseUrl, "models").let { url ->
-            if (baseUrl.contains("openrouter.ai", ignoreCase = true)) "$url?input_modalities=image&output_modalities=text" else url
-        }
+        val listUrl = ProviderCompatibility.modelListUrl(baseUrl)
         val headers = if (protocol == "anthropic") {
             mapOf("x-api-key" to key.takeIf { it.isNotBlank() }, "anthropic-version" to "2023-06-01")
         } else {
@@ -129,7 +128,7 @@ class ModelClient(private val secureStore: SecureStore) {
             val modalities = inputModalities(source)
             if (modalities.isNotEmpty()) capabilityKnown = true
             if (modalities.isNotEmpty() && modalities.none { it.equals("image", ignoreCase = true) }) continue
-            if (modalities.isEmpty() && !likelyMultimodal(baseUrl, id)) continue
+            if (modalities.isEmpty() && !ProviderCompatibility.likelyMultimodal(baseUrl, id)) continue
             output += JSONObject().put("id", id).put("name", source.optString("display_name").ifBlank { source.optString("name") }.ifBlank { id })
                 .also { if (modalities.isNotEmpty()) it.put("supportsImage", true) }
         }
@@ -236,22 +235,6 @@ class ModelClient(private val secureStore: SecureStore) {
         return arrays.flatMap { array -> (0 until array.length()).mapNotNull { array.optString(it).takeIf(String::isNotBlank) } }
     }
 
-    private fun likelyMultimodal(baseUrl: String, modelId: String): Boolean {
-        val base = baseUrl.lowercase()
-        val id = modelId.lowercase()
-        val excluded = listOf("embedding", "rerank", "moderation", "whisper", "transcrib", "tts", "speech", "realtime", "-live", "gpt-image", "dall-e", "imagen", "veo", "flux", "stable-diffusion", "cogview", "kolors", "text-embedding")
-        if (excluded.any(id::contains)) return false
-        return when {
-            base.contains("api.openai.com") -> id.startsWith("gpt-") || Regex("^o[1-9]").containsMatchIn(id)
-            base.contains("api.anthropic.com") -> id.startsWith("claude-")
-            base.contains("generativelanguage.googleapis.com") -> id.startsWith("gemini-")
-            base.contains("dashscope.aliyuncs.com") -> id.contains("-vl") || id.contains("omni")
-            base.contains("api.minimaxi.com") -> id.startsWith("minimax-m3")
-            base.contains("api.siliconflow.cn") -> listOf("-vl", "vision", "omni", "mllm", "glm-4.5v", "ocr").any(id::contains)
-            else -> true
-        }
-    }
-
     private fun get(url: String, headers: Map<String, String?>, timeoutMs: Long? = null): String {
         val current = NetworkPolicy.validateForRequest(url)
         val builder = Request.Builder().url(current).get().header("Accept", "application/json")
@@ -325,6 +308,51 @@ class ModelClient(private val secureStore: SecureStore) {
             val buffered = counting.buffer()
             delegate.writeTo(buffered)
             buffered.flush()
+        }
+    }
+}
+
+internal object ProviderCompatibility {
+    private val excludedModelFragments = listOf(
+        "embedding", "rerank", "moderation", "whisper", "transcrib", "tts", "speech",
+        "realtime", "-live", "gpt-image", "dall-e", "imagen", "veo", "flux",
+        "stable-diffusion", "cogview", "kolors", "text-embedding",
+    )
+
+    fun modelListUrl(baseUrl: String): String {
+        val clean = baseUrl.trimEnd('/')
+        return when {
+            clean.contains("api.longcat.chat", ignoreCase = true) -> "https://api.longcat.chat/v1/models"
+            clean.contains("openrouter.ai", ignoreCase = true) -> "$clean/models?input_modalities=image&output_modalities=text"
+            else -> "$clean/models"
+        }
+    }
+
+    fun validateSelectedModel(baseUrl: String, modelId: String) {
+        val base = baseUrl.lowercase()
+        if (base.contains("api.longcat.chat")) {
+            require(likelyMultimodal(baseUrl, modelId)) {
+                "LongCat 当前官方云 API 仅开放纯文本模型；请选择官方后续开放的 vision/omni 模型"
+            }
+        }
+    }
+
+    fun likelyMultimodal(baseUrl: String, modelId: String): Boolean {
+        val base = baseUrl.lowercase()
+        val id = modelId.lowercase()
+        if (excludedModelFragments.any(id::contains)) return false
+        return when {
+            base.contains("api.openai.com") -> id.startsWith("gpt-") || Regex("^o[1-9]").containsMatchIn(id)
+            base.contains("api.anthropic.com") -> id.startsWith("claude-")
+            base.contains("generativelanguage.googleapis.com") -> id.startsWith("gemini-")
+            base.contains("api.longcat.chat") -> listOf("vision", "omni", "multimodal").any(id::contains)
+            base.contains("dashscope.aliyuncs.com") -> id.contains("-vl") || id.contains("omni")
+            base.contains("api.hunyuan.cloud.tencent.com") -> id.contains("vision")
+            base.contains("open.bigmodel.cn") -> Regex("^glm-[0-9.]+v(?:-|$)").containsMatchIn(id) || id.contains("vision")
+            base.contains("ark.cn-beijing.volces.com") -> id.startsWith("doubao-seed-") || id.contains("vision")
+            base.contains("api.minimaxi.com") -> id.startsWith("minimax-m3")
+            base.contains("api.siliconflow.cn") -> listOf("-vl", "vision", "omni", "mllm", "glm-4.5v", "ocr").any(id::contains)
+            else -> true
         }
     }
 }

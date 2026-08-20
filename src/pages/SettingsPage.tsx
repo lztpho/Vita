@@ -103,6 +103,7 @@ export function SettingsPage({ provider, onSaved }: { provider?: ProviderConfig;
             {PROVIDER_PRESETS.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
           </select>
         </label>
+        {preset.statusNote && <p className="provider-note" role="note">{preset.statusNote}</p>}
         <div className="secret-row">
           <div><strong>API Key</strong><small>{form.hasApiKey ? '已填写' : '必填，仅加密保存在本机'}</small></div>
           <button type="button" className="button button--secondary" onClick={() => void apiKey(false)} disabled={busy || !form.configured}>{form.hasApiKey ? '更新 Key' : '填写 Key'}</button>
@@ -118,7 +119,10 @@ export function SettingsPage({ provider, onSaved }: { provider?: ProviderConfig;
                 {models.map((model) => <option key={model.id} value={model.id}>{model.name && model.name !== model.id ? `${model.name} · ${model.id}` : model.id}</option>)}
               </select>
             ) : (
-              <input value={form.visionModel} onChange={(event) => set('visionModel', event.target.value)} placeholder={preset.modelPlaceholder} autoCapitalize="none" autoCorrect="off" required />
+              <>
+                <input value={form.visionModel} onChange={(event) => set('visionModel', event.target.value)} placeholder={preset.modelPlaceholder} list={preset.suggestedModels?.length ? 'provider-model-suggestions' : undefined} autoCapitalize="none" autoCorrect="off" required />
+                {preset.suggestedModels?.length ? <datalist id="provider-model-suggestions">{preset.suggestedModels.map((model) => <option key={model} value={model} />)}</datalist> : null}
+              </>
             )}
           </label>
           <button type="button" className="button button--secondary" onClick={() => void loadModels()} disabled={busy || loadingModels || !form.baseUrl.trim()}>{loadingModels ? '获取中' : models.length ? '刷新' : '获取模型'}</button>

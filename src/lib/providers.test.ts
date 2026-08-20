@@ -5,6 +5,9 @@ import { applyProviderPreset, detectProvider, normalizeProviderConfig, providerP
 describe('provider presets', () => {
   it('detects providers while tolerating a trailing slash', () => {
     expect(detectProvider({ protocol: 'openai', baseUrl: 'https://api.minimaxi.com/v1/' })).toBe('minimax');
+    expect(detectProvider({ protocol: 'openai', baseUrl: 'https://api.hunyuan.cloud.tencent.com/v1/' })).toBe('hunyuan');
+    expect(detectProvider({ protocol: 'openai', baseUrl: 'https://open.bigmodel.cn/api/paas/v4' })).toBe('zhipu');
+    expect(detectProvider({ protocol: 'openai', baseUrl: 'https://ark.cn-beijing.volces.com/api/v3' })).toBe('volcengine');
     expect(detectProvider({ protocol: 'openai', baseUrl: 'https://self-hosted.test/v1' })).toBe('custom');
   });
 
@@ -21,6 +24,16 @@ describe('provider presets', () => {
 
   it('offers a MiniMax multimodal model hint', () => {
     expect(providerPreset('minimax').modelPlaceholder).toContain('MiniMax-M3');
+  });
+
+  it('offers current domestic multimodal model hints without claiming LongCat cloud vision support', () => {
+    expect(providerPreset('hunyuan').modelPlaceholder).toContain('hunyuan-vision');
+    expect(providerPreset('hunyuan').suggestedModels).toContain('hunyuan-vision-1.5-instruct');
+    expect(providerPreset('zhipu').modelPlaceholder).toContain('glm-5v');
+    expect(providerPreset('zhipu').suggestedModels).toContain('glm-5v-turbo');
+    expect(providerPreset('volcengine').modelPlaceholder).toContain('doubao-seed-2-0');
+    expect(providerPreset('volcengine').suggestedModels).toContain('doubao-seed-2-0-lite-260215');
+    expect(providerPreset('longcat').statusNote).toContain('仅支持文本输入');
   });
 
   it('fills missing native fields before rendering settings', () => {
