@@ -5,7 +5,6 @@ export type ProviderPresetId =
   | 'openai'
   | 'anthropic'
   | 'gemini'
-  | 'longcat'
   | 'qwen'
   | 'hunyuan'
   | 'zhipu'
@@ -22,7 +21,6 @@ export interface ProviderPreset {
   baseUrl: string;
   modelPlaceholder: string;
   suggestedModels?: string[];
-  statusNote?: string;
 }
 
 export const PROVIDER_PRESETS: ProviderPreset[] = [
@@ -37,11 +35,6 @@ export const PROVIDER_PRESETS: ProviderPreset[] = [
   {
     id: 'gemini', name: 'Google Gemini', protocol: 'openai', baseUrl: 'https://generativelanguage.googleapis.com/v1beta/openai',
     modelPlaceholder: '填写支持图片输入的 Gemini 模型 ID',
-  },
-  {
-    id: 'longcat', name: '美团 LongCat（API 图片能力待开放）', protocol: 'openai', baseUrl: 'https://api.longcat.chat/openai/v1',
-    modelPlaceholder: '例如：LongCat-Flash-Omni（需服务端开放图片输入）',
-    statusNote: 'LongCat 已开源多模态模型，但当前官方云 API 文档仍仅支持文本输入。Vita 会拒绝 LongCat-2.0 等纯文本模型；待官方开放 vision/omni API 后可直接填写对应模型 ID。',
   },
   {
     id: 'qwen', name: '阿里云百炼 / 通义千问', protocol: 'openai', baseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1',

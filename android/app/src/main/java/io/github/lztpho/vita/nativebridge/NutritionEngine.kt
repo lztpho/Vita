@@ -14,6 +14,7 @@ import kotlin.math.min
 import kotlin.math.round
 
 object NutritionEngine {
+    private const val INVALID_MODEL_ANALYSIS = "模型未返回可用的餐食识别结果。所选模型可能不支持图片输入，或未按要求返回结构化 JSON；请在设置中更换多模态模型并重新测试"
     private val nutrientKeys = listOf("caloriesKcal", "proteinG", "carbohydrateG", "fatG", "fiberG", "totalSugarG", "freeSugarG")
     private val labels = mapOf("caloriesKcal" to "热量", "proteinG" to "蛋白质", "carbohydrateG" to "碳水", "fatG" to "脂肪", "fiberG" to "膳食纤维", "totalSugarG" to "总糖", "freeSugarG" to "游离糖")
     private val units = mapOf("caloriesKcal" to "千卡", "proteinG" to "克", "carbohydrateG" to "克", "fatG" to "克", "fiberG" to "克", "totalSugarG" to "克", "freeSugarG" to "克")
@@ -21,11 +22,11 @@ object NutritionEngine {
 
     fun normalizeAnalysis(raw: JSONObject, draftId: String, consumedAtMs: Long, notes: String, thumbnailCount: Int): JSONObject {
         validateConsumedAt(consumedAtMs)
-        val rawItems = raw.optJSONArray("items") ?: throw IllegalArgumentException("模型没有返回食物明细")
-        require(rawItems.length() in 1..30) { "模型返回的食物数量无效" }
+        val rawItems = raw.optJSONArray("items") ?: throw IllegalArgumentException(INVALID_MODEL_ANALYSIS)
+        require(rawItems.length() in 1..30) { INVALID_MODEL_ANALYSIS }
         val items = JSONArray()
         repeat(rawItems.length()) { index ->
-            val item = rawItems.optJSONObject(index) ?: throw IllegalArgumentException("食物明细格式无效")
+            val item = rawItems.optJSONObject(index) ?: throw IllegalArgumentException(INVALID_MODEL_ANALYSIS)
             val base = normalizeNutrients(item.optJSONObject("nutrients") ?: JSONObject())
             items.put(JSONObject()
                 .put("id", UUID.randomUUID().toString())

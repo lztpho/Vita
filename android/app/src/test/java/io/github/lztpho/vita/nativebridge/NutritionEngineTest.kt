@@ -8,6 +8,7 @@ import org.junit.Test
 import java.time.LocalDateTime
 import java.time.LocalDate
 import java.time.ZoneId
+import org.json.JSONArray
 import org.json.JSONObject
 
 class NutritionEngineTest {
@@ -71,5 +72,14 @@ class NutritionEngineTest {
         assertTrue(prompt.contains("正面、配料表和营养成分表属于同一件食物"))
         assertTrue(prompt.contains("同一包装不得跨照片重复计算"))
         assertTrue(prompt.contains("每100克营养值"))
+    }
+
+    @Test fun invalidMealResponseExplainsModelCapabilityInsteadOfItemCount() {
+        val error = assertThrows(IllegalArgumentException::class.java) {
+            NutritionEngine.normalizeAnalysis(JSONObject().put("items", JSONArray()), "draft", System.currentTimeMillis(), "", 1)
+        }
+        assertTrue(error.message.orEmpty().contains("可能不支持图片输入"))
+        assertTrue(error.message.orEmpty().contains("结构化 JSON"))
+        assertTrue(!error.message.orEmpty().contains("食物数量无效"))
     }
 }

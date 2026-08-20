@@ -40,9 +40,13 @@ export function SettingsPage({ provider, onSaved }: { provider?: ProviderConfig;
       const result = await VitaNative.listProviderModels({ protocol: form.protocol, baseUrl: form.baseUrl.trim() });
       setModels(result.models);
       if (result.models.length === 0) {
-        setNotice('没有获取到可选模型，请手动填写模型 ID');
+        setNotice(result.capabilityKnown
+          ? '接口返回的模型均未声明图片输入能力，请选择支持图片理解的多模态模型'
+          : '没有获取到可确认图片能力的模型，请查阅厂商文档后手动填写多模态模型 ID');
       } else {
-        setNotice(`已获取 ${result.models.length} 个模型，请选择`);
+        setNotice(result.capabilityKnown
+          ? `已获取 ${result.models.length} 个支持图片输入的模型，请选择`
+          : `已获取 ${result.models.length} 个模型，但接口未声明图片能力；使用前请确认所选模型支持图片输入`);
       }
     } catch (error) {
       setModels([]);
@@ -103,7 +107,6 @@ export function SettingsPage({ provider, onSaved }: { provider?: ProviderConfig;
             {PROVIDER_PRESETS.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
           </select>
         </label>
-        {preset.statusNote && <p className="provider-note" role="note">{preset.statusNote}</p>}
         <div className="secret-row">
           <div><strong>API Key</strong><small>{form.hasApiKey ? '已填写' : '必填，仅加密保存在本机'}</small></div>
           <button type="button" className="button button--secondary" onClick={() => void apiKey(false)} disabled={busy || !form.configured}>{form.hasApiKey ? '更新 Key' : '填写 Key'}</button>

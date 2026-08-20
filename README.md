@@ -12,17 +12,6 @@ Vita 是一款本地优先、由用户自带云模型 API 的 Android 营养助�
 - 支持 OpenAI-compatible 与 Anthropic Messages 云接口，以及自定义 HTTPS 公网端点。
 - 内置阿里云百炼、腾讯混元、智谱 GLM、火山方舟/豆包、MiniMax、硅基流动等模型厂商预设。
 
-## 模型厂商
-
-Vita 只把能够接收图片并返回文本的模型列为可用多模态模型。当前国产厂商推荐填写：
-
-- 腾讯混元：`hunyuan-vision-1.5-instruct`
-- 智谱 GLM：`glm-5v-turbo`
-- 火山方舟/豆包：`doubao-seed-2-0-lite-260215`
-- 阿里云百炼：`qwen-vl-max` 或厂商当前提供的 Qwen VL/Omni 模型
-
-LongCat 预设使用官方 `https://api.longcat.chat/openai/v1`。LongCat 模型家族已有多模态模型，但截至当前官方云 API 的 [Chat Completions 文档](https://longcat.ai/platform/docs/zh/api/chat) 仍注明仅支持文本输入，且只列出 `LongCat-2.0`。因此 Vita 不会把 `LongCat-2.0` 当成拍餐视觉模型；当官方 API 开放带有 vision/omni 能力的模型后，模型列表会自动接受它。
-
 ## 安全与隐私边界
 
 - Vita 没有自建中转、账号系统、遥测或崩溃收集服务。所有模型请求直接发往用户配置的云模型厂商。
@@ -55,10 +44,6 @@ npm run licenses
 - npm 依赖由 `package-lock.json` 固定；Gradle wrapper 校验官方发行包 SHA-256。
 - CI 固定第三方 Action 的完整提交 SHA，并执行 Web/Android 测试、Lint、npm audit、OSV、gitleaks、许可证清单和双侧 CycloneDX SBOM。
 - 每个 Release 附带签名 APK、SHA-256、npm/Android SBOM、许可证清单和构建来源证明。
-
-## 项目实现披露
-
-本项目采用“人类主导需求、产品判断、评审和测试，结合生成式 AI 实现”的开发方式。所有代码、视觉资产和依赖都应接受来源、安全与许可证审计。
 
 ## 许可证
 

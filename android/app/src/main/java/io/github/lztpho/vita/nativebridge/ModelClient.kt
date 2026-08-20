@@ -45,7 +45,6 @@ class ModelClient(private val secureStore: SecureStore) {
         val base = NetworkPolicy.validateForRequest(input.getString("baseUrl"))
         val vision = input.optString("visionModel").trim()
         require(vision.isNotEmpty()) { "请填写视觉模型" }
-        ProviderCompatibility.validateSelectedModel(base.toString(), vision)
         val saved = JSONObject()
             .put("protocol", protocol)
             .put("baseUrl", base.toString().trimEnd('/'))
@@ -69,18 +68,24 @@ class ModelClient(private val secureStore: SecureStore) {
         val provider = secureStore.provider()
         val selectedModel = provider.optString("visionModel").trim()
         val listedAttempt = runCatching {
-            listModels(provider.optString("protocol", "openai"), provider.getString("baseUrl"), timeoutMs = 8_000).optJSONArray("models")
+            listModels(provider.optString("protocol", "openai"), provider.getString("baseUrl"), timeoutMs = 8_000)
         }
-        val listedModels = listedAttempt.getOrNull()
-        val selectedModelListed = listedModels != null && (0 until listedModels.length()).any { index ->
-            listedModels.optJSONObject(index)?.optString("id")?.equals(selectedModel, ignoreCase = true) == true
+        val listed = listedAttempt.getOrNull()
+        val listedModels = listed?.optJSONArray("models")
+        val selected = listedModels?.let { models ->
+            (0 until models.length()).mapNotNull(models::optJSONObject).firstOrNull { model ->
+                model.optString("id").equals(selectedModel, ignoreCase = true)
+            }
         }
-        if (selectedModelListed) {
-            return successfulTestResult(started, "API 连接正常，已找到所选模型")
+        if (selected?.optBoolean("supportsImage", false) == true) {
+            return successfulTestResult(started, "API 连接正常，所选模型支持图片输入")
+        }
+        if (listed?.optBoolean("capabilityKnown", false) == true && selected == null) {
+            throw IllegalArgumentException("所选模型未声明图片输入能力，请更换支持图片理解的多模态模型")
         }
         val failure = listedAttempt.exceptionOrNull()
         if (failure is ModelHttpException && failure.statusCode in listOf(401, 403)) throw failure
-        return inconclusiveTestResult(started)
+        return inconclusiveTestResult(started, "API 未声明所选模型的图片能力；请查阅厂商文档确认，拍餐时会校验实际返回结果")
     }
 
     private fun successfulTestResult(started: Long, detail: String): JSONObject {
@@ -93,14 +98,14 @@ class ModelClient(private val secureStore: SecureStore) {
             .put("detail", detail)
     }
 
-    private fun inconclusiveTestResult(started: Long): JSONObject = JSONObject()
+    private fun inconclusiveTestResult(started: Long, detail: String): JSONObject = JSONObject()
         .put("usable", false)
         .put("verified", false)
         .put("text", JSONObject.NULL)
         .put("vision", JSONObject.NULL)
         .put("structured", JSONObject.NULL)
         .put("latencyMs", System.currentTimeMillis() - started)
-        .put("detail", "测试接口未及时返回；不代表模型不可用，可直接用拍餐验证")
+        .put("detail", detail)
 
     fun listModels(protocol: String, rawBaseUrl: String, timeoutMs: Long? = null): JSONObject {
         require(protocol == "openai" || protocol == "anthropic") { "不支持的模型协议" }
@@ -126,11 +131,12 @@ class ModelClient(private val secureStore: SecureStore) {
             val id = source.optString("id").ifBlank { source.optString("name") }.trim()
             if (id.isBlank()) continue
             val modalities = inputModalities(source)
-            if (modalities.isNotEmpty()) capabilityKnown = true
-            if (modalities.isNotEmpty() && modalities.none { it.equals("image", ignoreCase = true) }) continue
-            if (modalities.isEmpty() && !ProviderCompatibility.likelyMultimodal(baseUrl, id)) continue
+            val inferredCapability = if (modalities.isEmpty()) ProviderCompatibility.inferredImageCapability(baseUrl, id) else null
+            val supportsImage = if (modalities.isNotEmpty()) modalities.any { it.equals("image", ignoreCase = true) } else inferredCapability
+            if (modalities.isNotEmpty() || inferredCapability != null) capabilityKnown = true
+            if (supportsImage == false) continue
             output += JSONObject().put("id", id).put("name", source.optString("display_name").ifBlank { source.optString("name") }.ifBlank { id })
-                .also { if (modalities.isNotEmpty()) it.put("supportsImage", true) }
+                .also { if (supportsImage == true) it.put("supportsImage", true) }
         }
         val unique = output.distinctBy { it.getString("id") }.sortedBy { it.getString("id").lowercase() }.take(240)
         return JSONObject()
@@ -322,22 +328,12 @@ internal object ProviderCompatibility {
     fun modelListUrl(baseUrl: String): String {
         val clean = baseUrl.trimEnd('/')
         return when {
-            clean.contains("api.longcat.chat", ignoreCase = true) -> "https://api.longcat.chat/v1/models"
             clean.contains("openrouter.ai", ignoreCase = true) -> "$clean/models?input_modalities=image&output_modalities=text"
             else -> "$clean/models"
         }
     }
 
-    fun validateSelectedModel(baseUrl: String, modelId: String) {
-        val base = baseUrl.lowercase()
-        if (base.contains("api.longcat.chat")) {
-            require(likelyMultimodal(baseUrl, modelId)) {
-                "LongCat 当前官方云 API 仅开放纯文本模型；请选择官方后续开放的 vision/omni 模型"
-            }
-        }
-    }
-
-    fun likelyMultimodal(baseUrl: String, modelId: String): Boolean {
+    fun inferredImageCapability(baseUrl: String, modelId: String): Boolean? {
         val base = baseUrl.lowercase()
         val id = modelId.lowercase()
         if (excludedModelFragments.any(id::contains)) return false
@@ -345,14 +341,14 @@ internal object ProviderCompatibility {
             base.contains("api.openai.com") -> id.startsWith("gpt-") || Regex("^o[1-9]").containsMatchIn(id)
             base.contains("api.anthropic.com") -> id.startsWith("claude-")
             base.contains("generativelanguage.googleapis.com") -> id.startsWith("gemini-")
-            base.contains("api.longcat.chat") -> listOf("vision", "omni", "multimodal").any(id::contains)
             base.contains("dashscope.aliyuncs.com") -> id.contains("-vl") || id.contains("omni")
             base.contains("api.hunyuan.cloud.tencent.com") -> id.contains("vision")
             base.contains("open.bigmodel.cn") -> Regex("^glm-[0-9.]+v(?:-|$)").containsMatchIn(id) || id.contains("vision")
             base.contains("ark.cn-beijing.volces.com") -> id.startsWith("doubao-seed-") || id.contains("vision")
             base.contains("api.minimaxi.com") -> id.startsWith("minimax-m3")
             base.contains("api.siliconflow.cn") -> listOf("-vl", "vision", "omni", "mllm", "glm-4.5v", "ocr").any(id::contains)
-            else -> true
+            base.contains("openrouter.ai") -> true
+            else -> null
         }
     }
 }

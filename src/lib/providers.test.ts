@@ -26,14 +26,13 @@ describe('provider presets', () => {
     expect(providerPreset('minimax').modelPlaceholder).toContain('MiniMax-M3');
   });
 
-  it('offers current domestic multimodal model hints without claiming LongCat cloud vision support', () => {
+  it('offers current domestic multimodal model hints', () => {
     expect(providerPreset('hunyuan').modelPlaceholder).toContain('hunyuan-vision');
     expect(providerPreset('hunyuan').suggestedModels).toContain('hunyuan-vision-1.5-instruct');
     expect(providerPreset('zhipu').modelPlaceholder).toContain('glm-5v');
     expect(providerPreset('zhipu').suggestedModels).toContain('glm-5v-turbo');
     expect(providerPreset('volcengine').modelPlaceholder).toContain('doubao-seed-2-0');
     expect(providerPreset('volcengine').suggestedModels).toContain('doubao-seed-2-0-lite-260215');
-    expect(providerPreset('longcat').statusNote).toContain('仅支持文本输入');
   });
 
   it('fills missing native fields before rendering settings', () => {
