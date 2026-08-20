@@ -15,6 +15,7 @@ $env:ANDROID_HOME = $androidHome
 Push-Location $repo
 try {
     npm run android:sync
+    if ($LASTEXITCODE -ne 0) { throw "Web build and Capacitor sync failed with exit code $LASTEXITCODE" }
     Push-Location (Join-Path $repo 'android')
     try {
         $task = if ($Configuration -eq 'Release') { ':app:assembleRelease' } else { ':app:assembleDebug' }

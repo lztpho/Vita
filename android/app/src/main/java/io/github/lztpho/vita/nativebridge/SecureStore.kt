@@ -34,6 +34,21 @@ internal object ProviderBinding {
         return JSONObject(record.toString()).put("scope", normalized).put("apiKey", key)
     }
 
+    fun stageKey(record: JSONObject, value: String, scope: String, protocol: String = "openai"): JSONObject {
+        val key = value.trim()
+        require(key.isNotBlank() && key.length <= 4096) { "API Key 不能为空或过长" }
+        val normalized = normalizeScope(scope)
+        require(normalized.isNotBlank()) { "API Base URL 不能为空" }
+        require(protocol == "openai" || protocol == "anthropic") { "不支持的模型协议" }
+        val provider = record.optJSONObject("provider")?.let { JSONObject(it.toString()) } ?: JSONObject()
+        if (normalizeScope(provider.optString("baseUrl")) != normalized) {
+            provider.remove("visionModel")
+            provider.remove("textModel")
+        }
+        provider.put("protocol", protocol).put("baseUrl", normalized)
+        return JSONObject(record.toString()).put("provider", provider).put("scope", normalized).put("apiKey", key)
+    }
+
     fun keyFor(record: JSONObject, scope: String): String = if (
         normalizeScope(record.optString("scope")) == normalizeScope(scope)
     ) record.optString("apiKey") else ""
@@ -115,8 +130,8 @@ class SecureStore(private val context: Context) {
 
     fun hasApiKey(scope: String): Boolean = apiKey(scope).isNotEmpty()
 
-    @Synchronized fun saveApiKey(value: String, scope: String) {
-        val record = ProviderBinding.bindKey(providerRecord(), value, scope)
+    @Synchronized fun saveApiKey(value: String, scope: String, protocol: String) {
+        val record = ProviderBinding.stageKey(providerRecord(), value, scope, protocol)
         putEncrypted(PROVIDER_RECORD, record.toString().toByteArray(Charsets.UTF_8))
     }
 

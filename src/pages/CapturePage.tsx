@@ -39,6 +39,16 @@ function itemNutrients(item: MealItem) {
   ].join(' · ');
 }
 
+export function RecognitionDetails({ items, assumptions = [] }: { items: MealItem[]; assumptions?: string[] }) {
+  return <>
+    <ul className="meal-food-list">{items.filter((item) => !item.removed).map((item) => <li key={item.id}>
+      <strong>{item.name}</strong>
+      <span>{item.amountLabel} · {rangeText(item.nutrients.caloriesKcal, '千卡', 0)}</span>
+    </li>)}</ul>
+    {assumptions.length ? <section className="analysis-assumptions"><strong>估算依据</strong><p>{assumptions.join('；')}</p></section> : null}
+  </>;
+}
+
 function wait(ms: number) {
   return new Promise((resolve) => window.setTimeout(resolve, ms));
 }
@@ -352,15 +362,15 @@ export function CapturePage({ onConfirmed }: { onConfirmed: () => void }) {
 
         <details className="meal-details" open={draft.recordingMethod === 'historical_reuse'}>
           <summary>查看识别明细（{draft.items.filter((item) => !item.removed).length} 项食物）</summary>
-          <section className="draft-foods">
+          {draft.recordingMethod === 'photo_analysis' ? <RecognitionDetails items={draft.items} assumptions={draft.assumptions} /> : <section className="draft-foods">
           <div className="food-list">{draft.items.map((item) => <article className={item.removed ? 'is-removed' : ''} key={item.id}>
             <div className="food-list__heading"><div><strong>{item.name}</strong><small>{item.amountLabel}</small></div><button className="text-action" onClick={() => void patchDraft({ removedItemIds: item.removed ? draft.items.filter((entry) => entry.removed && entry.id !== item.id).map((entry) => entry.id) : [...draft.items.filter((entry) => entry.removed).map((entry) => entry.id), item.id] })}>{item.removed ? '恢复' : '移除'}</button></div>
             <p>{itemNutrients(item)}</p>
-            {draft.recordingMethod === 'historical_reuse' && <label className="item-multiplier"><span>单项份量</span><select value={item.multiplier} disabled={item.removed} onChange={(event) => void patchDraft({ itemMultipliers: { [item.id]: Number(event.target.value) } })}>{multipliers.map((value) => <option key={value} value={value}>{value}×</option>)}</select></label>}
+            <label className="item-multiplier"><span>单项份量</span><select value={item.multiplier} disabled={item.removed} onChange={(event) => void patchDraft({ itemMultipliers: { [item.id]: Number(event.target.value) } })}>{multipliers.map((value) => <option key={value} value={value}>{value}×</option>)}</select></label>
             {item.assumptions?.length ? <small className="item-assumption">{item.assumptions.join('；')}</small> : null}
           </article>)}</div>
           {draft.assumptions?.length ? <section className="analysis-assumptions"><strong>估算依据</strong><p>{draft.assumptions.join('；')}</p></section> : null}
-          </section>
+          </section>}
         </details>
 
         {draft.recordingMethod === 'historical_reuse' && <div className="portion-control"><strong>调整本次份量</strong><div>{multipliers.map((value) => <button key={value} className={draft.overallMultiplier === value ? 'is-active' : ''} onClick={() => void patchDraft({ overallMultiplier: value })}>{value}×</button>)}</div></div>}

@@ -2,14 +2,30 @@
 package io.github.lztpho.vita.nativebridge
 
 import android.app.AlertDialog
+import android.app.Activity
+import android.content.Intent
+import android.graphics.Color
+import android.graphics.Typeface
+import android.graphics.drawable.ColorDrawable
+import android.graphics.drawable.GradientDrawable
 import android.text.InputType
+import android.text.method.HideReturnsTransformationMethod
+import android.text.method.PasswordTransformationMethod
+import android.view.Gravity
 import android.view.WindowManager
+import android.widget.Button
 import android.widget.EditText
+import android.widget.FrameLayout
+import android.widget.LinearLayout
+import android.widget.Space
+import android.widget.TextView
 import com.getcapacitor.JSObject
 import com.getcapacitor.Plugin
 import com.getcapacitor.PluginCall
 import com.getcapacitor.PluginMethod
+import com.getcapacitor.annotation.ActivityCallback
 import com.getcapacitor.annotation.CapacitorPlugin
+import androidx.activity.result.ActivityResult
 import org.json.JSONArray
 import org.json.JSONObject
 import java.time.LocalDate
@@ -25,12 +41,15 @@ class VitaPlugin : Plugin() {
     private lateinit var db: VitaDatabase
     private lateinit var imageVault: ImageVault
     private lateinit var models: ModelClient
+    private lateinit var diagnosticLog: DiagnosticLog
 
     override fun load() {
         secureStore = SecureStore(context)
         db = VitaDatabase.get(context, secureStore)
         imageVault = ImageVault(context, secureStore)
         models = ModelClient(secureStore)
+        diagnosticLog = DiagnosticLog.from(context)
+        diagnosticLog.record("app_open")
     }
 
     @PluginMethod fun getAppState(call: PluginCall) = async(call) {
@@ -45,34 +64,191 @@ class VitaPlugin : Plugin() {
     @PluginMethod fun promptApiKey(call: PluginCall) {
         if (call.getBoolean("clear", false) == true) {
             secureStore.clearApiKey()
+            diagnosticLog.record("api_key_clear")
             call.resolve(JSObject().put("hasApiKey", false))
             return
         }
-        val keyScope = runCatching {
-            NetworkPolicy.validate(call.getString("baseUrl").orEmpty()).toString().trimEnd('/')
-        }.getOrElse {
-            call.reject("请先选择 AI 厂商或填写 API Base URL")
-            return
+        val suppliedBaseUrl = call.getString("baseUrl").orEmpty().trim()
+        val protocol = call.getString("protocol") ?: "openai"
+        val validatedSuppliedBaseUrl = suppliedBaseUrl.takeIf { it.isNotBlank() }?.let { value ->
+            runCatching { NetworkPolicy.validate(value).toString().trimEnd('/') }.getOrNull()
         }
         activity.runOnUiThread {
-            val input = EditText(activity).apply {
+            val density = activity.resources.displayMetrics.density
+            fun dp(value: Int) = (value * density + 0.5f).toInt()
+            fun background(color: String, radius: Int, strokeColor: String? = null, strokeWidth: Int = 0) =
+                GradientDrawable().apply {
+                    setColor(Color.parseColor(color))
+                    cornerRadius = dp(radius).toFloat()
+                    strokeColor?.let { setStroke(dp(strokeWidth), Color.parseColor(it)) }
+                }
+            fun textView(text: String, size: Float, color: String, bold: Boolean = false) = TextView(activity).apply {
+                this.text = text
+                textSize = size
+                setTextColor(Color.parseColor(color))
+                if (bold) setTypeface(typeface, Typeface.BOLD)
+                includeFontPadding = false
+            }
+            fun fieldLayout(topMargin: Int = 8) = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                dp(52),
+            ).apply { this.topMargin = dp(topMargin) }
+            fun styleInput(input: EditText) = input.apply {
+                textSize = 16f
+                setTextColor(Color.parseColor("#202231"))
+                setHintTextColor(Color.parseColor("#9295A4"))
+                setPadding(dp(16), 0, dp(16), 0)
+                background = background("#FAFAFD", 14, "#D7D8E2", 1)
+            }
+            val endpointInput = if (validatedSuppliedBaseUrl == null) {
+                styleInput(EditText(activity)).apply {
+                    hint = "API Base URL"
+                    inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_URI
+                    setSingleLine(true)
+                    setText(suppliedBaseUrl)
+                }
+            } else null
+            val keyInput = styleInput(EditText(activity)).apply {
                 hint = "API Key"
                 inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD
+                transformationMethod = PasswordTransformationMethod.getInstance()
                 setSingleLine(true)
+                setPadding(dp(16), 0, dp(72), 0)
+            }
+            var keyVisible = false
+            val visibilityToggle = textView("显示", 14f, "#292F69", true).apply {
+                gravity = Gravity.CENTER
+                isClickable = true
+                isFocusable = true
+                contentDescription = "显示 API Key"
+                setPadding(dp(10), 0, dp(10), 0)
+                setOnClickListener {
+                    keyVisible = !keyVisible
+                    keyInput.transformationMethod = if (keyVisible) {
+                        HideReturnsTransformationMethod.getInstance()
+                    } else {
+                        PasswordTransformationMethod.getInstance()
+                    }
+                    text = if (keyVisible) "隐藏" else "显示"
+                    contentDescription = if (keyVisible) "隐藏 API Key" else "显示 API Key"
+                    keyInput.setSelection(keyInput.text?.length ?: 0)
+                }
+            }
+            val keyField = FrameLayout(activity).apply {
+                addView(keyInput, FrameLayout.LayoutParams(
+                    FrameLayout.LayoutParams.MATCH_PARENT,
+                    FrameLayout.LayoutParams.MATCH_PARENT,
+                ))
+                addView(visibilityToggle, FrameLayout.LayoutParams(dp(64), FrameLayout.LayoutParams.MATCH_PARENT, Gravity.END))
+            }
+            val cancelButton = Button(activity).apply {
+                text = "取消"
+                textSize = 16f
+                isAllCaps = false
+                setTypeface(typeface, Typeface.BOLD)
+                setTextColor(Color.parseColor("#292F69"))
+                background = background("#F8F8FC", 14, "#D7D8E2", 1)
+                stateListAnimator = null
+            }
+            val saveButton = Button(activity).apply {
+                text = "保存"
+                textSize = 16f
+                isAllCaps = false
+                setTypeface(typeface, Typeface.BOLD)
+                setTextColor(Color.WHITE)
+                background = background("#292F69", 14)
+                stateListAnimator = null
+            }
+            val content = LinearLayout(activity).apply {
+                orientation = LinearLayout.VERTICAL
+                isFocusableInTouchMode = true
+                setPadding(dp(24), dp(22), dp(24), dp(20))
+                background = background("#FFFFFF", 24)
+
+                addView(textView("填写 API Key", 23f, "#202231", true))
+                addView(textView(
+                    if (endpointInput == null) "加密保存在本机，仅用于当前接口"
+                    else "填写 HTTPS 接口地址和 Key，并加密保存在本机",
+                    14f,
+                    "#747786",
+                ), LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                ).apply { topMargin = dp(8) })
+
+                endpointInput?.let {
+                    addView(textView("API Base URL", 13f, "#4B4E5C", true), LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.MATCH_PARENT,
+                        LinearLayout.LayoutParams.WRAP_CONTENT,
+                    ).apply { topMargin = dp(20) })
+                    addView(it, fieldLayout())
+                }
+                addView(textView("API Key", 13f, "#4B4E5C", true), LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                ).apply { topMargin = dp(if (endpointInput == null) 20 else 16) })
+                addView(keyField, fieldLayout())
+
+                val actions = LinearLayout(activity).apply {
+                    orientation = LinearLayout.HORIZONTAL
+                    addView(cancelButton, LinearLayout.LayoutParams(0, dp(50), 1f))
+                    addView(Space(activity), LinearLayout.LayoutParams(dp(12), 1))
+                    addView(saveButton, LinearLayout.LayoutParams(0, dp(50), 1f))
+                }
+                addView(actions, LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                ).apply { topMargin = dp(22) })
+                requestFocus()
             }
             val dialog = AlertDialog.Builder(activity)
-                .setTitle("API Key")
-                .setMessage("保存即表示你同意：餐食图片、备注和咨询内容会直接发送给所选云模型厂商。图片上传前会在本机移除 EXIF/GPS 并重新编码。")
-                .setView(input)
-                .setPositiveButton("保存") { _, _ ->
-                    secureStore.saveApiKey(input.text?.toString().orEmpty().trim(), keyScope)
-                    input.text?.clear()
-                    call.resolve(JSObject().put("hasApiKey", secureStore.hasApiKey(keyScope)))
-                }
-                .setNegativeButton("取消") { _, _ -> call.reject("已取消") }
-                .setOnCancelListener { call.reject("已取消") }
+                .setView(content)
                 .create()
-            dialog.setOnShowListener { dialog.window?.addFlags(WindowManager.LayoutParams.FLAG_SECURE) }
+            var completed = false
+            dialog.setOnCancelListener {
+                if (!completed) {
+                    completed = true
+                    call.reject("已取消")
+                }
+            }
+            dialog.setOnShowListener {
+                dialog.window?.apply {
+                    setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+                    decorView.setPadding(0, 0, 0, 0)
+                    addFlags(WindowManager.LayoutParams.FLAG_SECURE)
+                    setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_HIDDEN)
+                    val availableWidth = activity.resources.displayMetrics.widthPixels - dp(32)
+                    setLayout(availableWidth.coerceAtMost(dp(480)), WindowManager.LayoutParams.WRAP_CONTENT)
+                }
+                cancelButton.setOnClickListener {
+                    if (!completed) {
+                        completed = true
+                        call.reject("已取消")
+                    }
+                    dialog.dismiss()
+                }
+                saveButton.setOnClickListener {
+                    val rawBaseUrl = endpointInput?.text?.toString().orEmpty().trim().ifBlank { validatedSuppliedBaseUrl.orEmpty() }
+                    val keyScope = runCatching {
+                        NetworkPolicy.validate(rawBaseUrl).toString().trimEnd('/')
+                    }.getOrElse { error ->
+                        endpointInput?.error = error.message ?: "请填写有效的 HTTPS 公网地址"
+                        return@setOnClickListener
+                    }
+                    runCatching {
+                        secureStore.saveApiKey(keyInput.text?.toString().orEmpty(), keyScope, protocol)
+                    }.onSuccess {
+                        completed = true
+                        keyInput.text?.clear()
+                        dialog.dismiss()
+                        diagnosticLog.record("api_key_save")
+                        call.resolve(JSObject().put("hasApiKey", true).put("baseUrl", keyScope))
+                    }.onFailure { error ->
+                        diagnosticLog.record("api_key_save", "error", error = error)
+                        keyInput.error = error.message ?: "API Key 保存失败"
+                    }
+                }
+            }
             dialog.show()
         }
     }
@@ -276,10 +452,21 @@ class VitaPlugin : Plugin() {
         val runId = UUID.randomUUID().toString()
         val sessionId = call.getString("sessionId") ?: ""
         val message = call.getString("message").orEmpty().trim()
-        if (message.isBlank()) { call.reject("请输入问题"); return }
-        if (message.length > 2000) { call.reject("问题不能超过 2000 字"); return }
+        if (message.isBlank()) {
+            val error = IllegalArgumentException("请输入问题")
+            diagnosticLog.record("streamChat", "error", error = error)
+            call.reject(error.message!!)
+            return
+        }
+        if (message.length > 2000) {
+            val error = IllegalArgumentException("问题不能超过 2000 字")
+            diagnosticLog.record("streamChat", "error", error = error)
+            call.reject(error.message!!)
+            return
+        }
         call.resolve(JSObject().put("runId", runId))
         worker.execute {
+            val started = System.currentTimeMillis()
             try {
                 val session = db.dao().session(sessionId) ?: throw IllegalArgumentException("会话不存在")
                 val now = System.currentTimeMillis()
@@ -290,7 +477,9 @@ class VitaPlugin : Plugin() {
                 db.dao().putSession(session.copy(title = if (session.title == "新会话") message.take(18) else session.title, updatedAtMs = System.currentTimeMillis()))
                 answer.chunked(24).forEach { notifyListeners("chatDelta", JSObject().put("runId", runId).put("delta", it)) }
                 notifyListeners("chatDone", JSObject().put("runId", runId).put("session", sessionJson(db.dao().session(session.id)!!)))
+                diagnosticLog.record("streamChat", durationMs = System.currentTimeMillis() - started)
             } catch (error: Throwable) {
+                diagnosticLog.record("streamChat", "error", System.currentTimeMillis() - started, error)
                 notifyListeners("chatError", JSObject().put("runId", runId).put("message", safeMessage(error)))
             }
         }
@@ -345,7 +534,47 @@ class VitaPlugin : Plugin() {
         db = VitaDatabase.get(context, secureStore)
         imageVault = ImageVault(context, secureStore)
         models = ModelClient(secureStore)
+        diagnosticLog.clear()
         JSONObject().put("cleared", true)
+    }
+
+    @PluginMethod fun exportDiagnosticLogs(call: PluginCall) {
+        val intent = Intent(Intent.ACTION_CREATE_DOCUMENT).apply {
+            addCategory(Intent.CATEGORY_OPENABLE)
+            type = "text/plain"
+            putExtra(Intent.EXTRA_TITLE, diagnosticLog.exportFileName())
+        }
+        startActivityForResult(call, intent, "finishDiagnosticLogExport")
+    }
+
+    @ActivityCallback
+    private fun finishDiagnosticLogExport(call: PluginCall?, result: ActivityResult) {
+        if (call == null) return
+        if (result.resultCode != Activity.RESULT_OK) {
+            call.resolve(JSObject().put("exported", false))
+            return
+        }
+        val destination = result.data?.data
+        if (destination == null) {
+            val error = IllegalStateException("没有获得日志保存位置")
+            diagnosticLog.record("exportDiagnosticLogs", "error", error = error)
+            call.reject(error.message!!, error)
+            return
+        }
+        worker.execute {
+            val started = System.currentTimeMillis()
+            try {
+                val text = diagnosticLog.exportText()
+                context.contentResolver.openOutputStream(destination, "w")?.use { output ->
+                    output.write(text.toByteArray(Charsets.UTF_8))
+                } ?: throw IllegalStateException("无法写入所选位置")
+                diagnosticLog.record("exportDiagnosticLogs", durationMs = System.currentTimeMillis() - started)
+                call.resolve(JSObject().put("exported", true))
+            } catch (error: Throwable) {
+                diagnosticLog.record("exportDiagnosticLogs", "error", System.currentTimeMillis() - started, error)
+                call.reject("诊断日志导出失败", error as? Exception ?: Exception(error))
+            }
+        }
     }
 
     private fun createSession(replaceExisting: Boolean = false): ChatSessionEntity = ChatSessionEntity(
@@ -358,8 +587,25 @@ class VitaPlugin : Plugin() {
     private fun JSONArray?.toObjects(): List<JSONObject> = if (this == null) emptyList() else (0 until length()).mapNotNull { optJSONObject(it) }
 
     private fun async(call: PluginCall, block: () -> JSONObject) {
-        worker.execute { try { call.resolve(JSObject(block().toString())) } catch (error: Throwable) { call.reject(safeMessage(error), error as? Exception ?: Exception(error)) } }
+        worker.execute {
+            val started = System.currentTimeMillis()
+            try {
+                val result = block()
+                if (call.methodName in loggedSuccessOperations) {
+                    diagnosticLog.record(call.methodName, durationMs = System.currentTimeMillis() - started)
+                }
+                call.resolve(JSObject(result.toString()))
+            } catch (error: Throwable) {
+                diagnosticLog.record(call.methodName, "error", System.currentTimeMillis() - started, error)
+                call.reject(safeMessage(error), error as? Exception ?: Exception(error))
+            }
+        }
     }
+
+    private val loggedSuccessOperations = setOf(
+        "configureProvider", "testProvider", "listProviderModels", "analyzeMeal", "startMealAnalysis",
+        "refineMealDraft", "confirmMealDraft", "deleteMeal", "createGoalProposal", "confirmGoal", "newChatSession",
+    )
 
     private fun safeMessage(error: Throwable): String = error.message?.takeIf { it.isNotBlank() } ?: "操作没有完成，请稍后重试"
 

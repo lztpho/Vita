@@ -22,7 +22,9 @@ object MealAnalysisTaskManager {
         val startedAt = System.currentTimeMillis()
         val images = JSONArray(sourceImages.toString())
         val store = SecureStore(appContext)
+        val diagnosticLog = DiagnosticLog.from(appContext)
         save(store, taskId, draftId, "queued", "prepare", startedAt, 0, images.length(), 0)
+        diagnosticLog.record("meal_analysis", phase = "queued")
         activeTasks.incrementAndGet()
         MealAnalysisService.start(appContext)
         worker.execute {
@@ -52,6 +54,7 @@ object MealAnalysisTaskManager {
                 val now = System.currentTimeMillis()
                 VitaDatabase.get(appContext, store).dao().putDraft(DraftEntity(draftId, "meal", "draft", payload.toString(), now, now))
                 save(store, taskId, draftId, "succeeded", "done", startedAt, prepared.size, prepared.size, 100)
+                diagnosticLog.record("meal_analysis", durationMs = now - startedAt, phase = "done")
             } catch (error: Throwable) {
                 imageVault.cancelDraft(draftId)
                 val message = error.message?.takeIf(String::isNotBlank) ?: "餐食分析没有完成"
@@ -59,6 +62,7 @@ object MealAnalysisTaskManager {
                     .put("completedAt", System.currentTimeMillis())
                     .put("message", message.take(500))
                 store.saveMealTask(taskId, failed)
+                diagnosticLog.record("meal_analysis", "error", System.currentTimeMillis() - startedAt, error, "failed")
             } finally {
                 if (activeTasks.decrementAndGet() <= 0) MealAnalysisService.stop(appContext)
             }

@@ -21,8 +21,11 @@ The selected provider's privacy policy and retention rules apply to data it rece
 - SQLCipher database: confirmed meals, nutrition goals, drafts, and only the current chat session;
 - encrypted files: reduced meal thumbnails;
 - Android Keystore-protected encrypted preferences: provider configuration, API Key, database key, and current task state.
+- bounded diagnostic logs: operation name, stage, duration, error category, app version, and basic Android runtime information.
 
-Starting a new chat deletes the previous session and messages in one database transaction. The settings screen can delete all local app data after two confirmations. Android uninstallation also removes the app sandbox, subject to operating-system behavior.
+Diagnostic logs are stored only in the app sandbox and are never uploaded automatically. They intentionally exclude API Keys, meal and chat content, image locations, and full provider endpoints. The user can explicitly export a redacted text copy from Settings when reporting a problem.
+
+Starting a new chat deletes the previous session and messages in one database transaction. The settings screen can delete all local app data, including diagnostic logs, after two confirmations. Android uninstallation also removes the app sandbox, subject to operating-system behavior.
 
 ## Network policy
 

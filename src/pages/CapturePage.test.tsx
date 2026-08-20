@@ -5,7 +5,7 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { MealCorrection } from './CapturePage';
+import { MealCorrection, RecognitionDetails } from './CapturePage';
 
 describe('MealCorrection', () => {
   let host: HTMLDivElement;
@@ -50,5 +50,27 @@ describe('meal image pipeline', () => {
     expect(vault).toContain('bytes.fill(0)');
     expect(capture).toContain('quality: 100');
     expect(capture).toContain('correctOrientation: false');
+  });
+});
+
+describe('RecognitionDetails', () => {
+  it('uses the concise private-edition information hierarchy', async () => {
+    const host = document.createElement('div');
+    document.body.append(host);
+    const root = createRoot(host);
+    const range = (min: number, max: number) => ({ min, max });
+    await act(async () => { root.render(<RecognitionDetails items={[{
+      id: 'food-1', name: '烤鸡腿', amountLabel: '420–480 克', multiplier: 1,
+      nutrients: {
+        caloriesKcal: range(840, 1050), proteinG: range(60, 70), carbohydrateG: range(0, 4),
+        fatG: range(62, 82), fiberG: range(0, 0.7), totalSugarG: range(0, 1.5), freeSugarG: range(0, 0.8),
+      },
+    }]} assumptions={['按可见份量估算']} />); });
+
+    expect(host.querySelector('.meal-food-list')?.textContent).toBe('烤鸡腿420–480 克 · 840–1050 千卡');
+    expect(host.querySelector('.meal-food-list')?.textContent).not.toContain('蛋白质');
+    expect(host.querySelector('.analysis-assumptions')?.textContent).toContain('估算依据按可见份量估算');
+    await act(async () => { root.unmount(); });
+    host.remove();
   });
 });

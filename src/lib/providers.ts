@@ -23,6 +23,8 @@ export interface ProviderPreset {
   suggestedModels?: string[];
 }
 
+export const DEFAULT_PROVIDER_ID: ProviderPresetId = 'minimax';
+
 export const PROVIDER_PRESETS: ProviderPreset[] = [
   {
     id: 'openai', name: 'OpenAI', protocol: 'openai', baseUrl: 'https://api.openai.com/v1',
@@ -91,13 +93,13 @@ function normalizedUrl(value: string): string {
 }
 
 export function detectProvider(config?: Pick<ProviderConfig, 'baseUrl' | 'protocol'>): ProviderPresetId {
-  if (!config?.baseUrl) return 'openai';
+  if (!config?.baseUrl) return DEFAULT_PROVIDER_ID;
   const baseUrl = normalizedUrl(config.baseUrl);
   return PROVIDER_PRESETS.find((item) => item.id !== 'custom' && normalizedUrl(item.baseUrl) === baseUrl)?.id || 'custom';
 }
 
 export function applyProviderPreset(config: ProviderConfig, id: ProviderPresetId): ProviderConfig {
   const preset = providerPreset(id);
-  if (id === 'custom') return { ...config };
+  if (id === 'custom') return { ...config, protocol: 'openai', baseUrl: '', visionModel: '', textModel: '', hasApiKey: false, configured: false };
   return { ...config, protocol: preset.protocol, baseUrl: preset.baseUrl, visionModel: '', textModel: '', hasApiKey: false, configured: false };
 }

@@ -11,14 +11,21 @@ describe('provider presets', () => {
     expect(detectProvider({ protocol: 'openai', baseUrl: 'https://self-hosted.test/v1' })).toBe('custom');
   });
 
-  it('starts an empty configuration with the OpenAI choice', () => {
-    expect(detectProvider({ protocol: 'openai', baseUrl: '' })).toBe('openai');
+  it('starts an empty configuration with the MiniMax choice', () => {
+    expect(detectProvider({ protocol: 'openai', baseUrl: '' })).toBe('minimax');
   });
 
   it('fills the endpoint and clears model ids when the provider changes', () => {
     const current = { protocol: 'openai' as const, baseUrl: 'https://old.test/v1', visionModel: 'old-vision', textModel: 'old-text' };
     expect(applyProviderPreset(current, 'qwen')).toMatchObject({
       protocol: 'openai', baseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1', visionModel: '', textModel: '', hasApiKey: false, configured: false,
+    });
+  });
+
+  it('clears preset fields when switching to a custom endpoint', () => {
+    const current = { protocol: 'openai' as const, baseUrl: 'https://api.minimaxi.com/v1', visionModel: 'MiniMax-M3', textModel: '', hasApiKey: true, configured: true };
+    expect(applyProviderPreset(current, 'custom')).toEqual({
+      protocol: 'openai', baseUrl: '', visionModel: '', textModel: '', hasApiKey: false, configured: false,
     });
   });
 

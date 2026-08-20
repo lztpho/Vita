@@ -33,7 +33,7 @@ export interface MealAnalysisTask {
 export interface VitaNativePlugin {
   getAppState(): Promise<AppState>;
   configureProvider(options: ProviderConfig): Promise<{ provider: ProviderConfig }>;
-  promptApiKey(options?: { clear?: boolean; baseUrl?: string }): Promise<{ hasApiKey: boolean }>;
+  promptApiKey(options?: { clear?: boolean; baseUrl?: string; protocol?: ProviderConfig['protocol'] }): Promise<{ hasApiKey: boolean; baseUrl?: string }>;
   listProviderModels(options: Pick<ProviderConfig, 'protocol' | 'baseUrl'>): Promise<{ models: ProviderModel[]; capabilityKnown: boolean }>;
   testProvider(): Promise<ModelTestResult>;
   analyzeMeal(options: {
@@ -67,6 +67,7 @@ export interface VitaNativePlugin {
   getNutritionMonth(options: { month: string }): Promise<NutritionMonth>;
   getMealThumbnail(options: { mealId: string; index: number; reference?: boolean }): Promise<{ dataUrl: string }>;
   deleteMeal(options: { mealId: string }): Promise<{ deleted: boolean }>;
+  exportDiagnosticLogs(): Promise<{ exported: boolean }>;
   clearAllLocalData(options: { confirmed: boolean }): Promise<{ cleared: boolean }>;
   createGoalProposal(options: { profile: UserProfile }): Promise<{ proposal: NutritionGoalProposal }>;
   confirmGoal(options: { proposalId: string; targets: NutritionGoalProposal['targets'] }): Promise<{ goal: NutritionGoal }>;
@@ -111,9 +112,11 @@ class BrowserFallback implements VitaNativePlugin {
     this.provider = { ...options, hasApiKey: this.provider.hasApiKey, configured: Boolean(options.baseUrl && options.visionModel) };
     return { provider: this.provider };
   }
-  async promptApiKey(options?: { clear?: boolean; baseUrl?: string }) {
-    this.provider.hasApiKey = !options?.clear;
-    return { hasApiKey: this.provider.hasApiKey };
+  async promptApiKey(options?: { clear?: boolean; baseUrl?: string; protocol?: ProviderConfig['protocol'] }) {
+    const hasApiKey = options?.clear !== true;
+    this.provider.hasApiKey = hasApiKey;
+    if (options?.baseUrl) this.provider = { ...this.provider, protocol: options.protocol || 'openai', baseUrl: options.baseUrl };
+    return { hasApiKey, baseUrl: options?.baseUrl };
   }
   async listProviderModels(): Promise<{ models: ProviderModel[]; capabilityKnown: boolean }> {
     return { models: [], capabilityKnown: false };
@@ -138,6 +141,7 @@ class BrowserFallback implements VitaNativePlugin {
   async getNutritionMonth(options: { month: string }) { return { month: options.month, days: [] }; }
   async getMealThumbnail(): Promise<{ dataUrl: string }> { return { dataUrl: '' }; }
   async deleteMeal(): Promise<{ deleted: boolean }> { return { deleted: true }; }
+  async exportDiagnosticLogs(): Promise<{ exported: boolean }> { throw new Error('诊断日志只能在 Android 应用中导出。'); }
   async clearAllLocalData(): Promise<{ cleared: boolean }> {
     this.provider = { protocol: 'openai', baseUrl: '', visionModel: '', textModel: '', configured: false, hasApiKey: false };
     this.goalProposal = undefined;

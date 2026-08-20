@@ -1,6 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ChatPage } from './ChatPage';
 
@@ -46,5 +49,11 @@ describe('ChatPage composer', () => {
     expect(streamChat).toHaveBeenCalledWith({ sessionId: 'session-1', message: '今天蛋白质还差多少' });
     expect(textarea.value).toBe('');
     await act(async () => { root.unmount(); });
+  });
+
+  it('keeps user message text readable on the dark bubble', () => {
+    const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
+    const styles = readFileSync(path.join(projectRoot, 'src/styles.css'), 'utf8');
+    expect(styles).toContain('.message--user p, .message--user li, .message--user a { color: inherit; }');
   });
 });
