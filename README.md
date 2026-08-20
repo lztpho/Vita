@@ -1,53 +1,70 @@
+<div align="center">
+
 # Vita
 
-Vita 是一款本地优先的 Android 营养助手。拍下餐食，使用你自己的多模态模型 API 完成识别，并在本机管理营养记录、目标与咨询。
+**拍一张，记一餐。**<br>
+使用自己的多模态模型，完成餐食识别、营养记录与饮食咨询。
 
-## 主要功能
+[![Release](https://img.shields.io/github/v/release/lztpho/Vita?style=flat-square&color=292f6b)](https://github.com/lztpho/Vita/releases/latest)
+[![Android](https://img.shields.io/badge/Android-8.0%2B-3DDC84?style=flat-square&logo=android&logoColor=white)](https://github.com/lztpho/Vita/releases/latest)
+[![License](https://img.shields.io/github/license/lztpho/Vita?style=flat-square&color=f59a73)](LICENSE)
 
-- **拍照识别餐食**：支持拍照或从相册选择多张图片，识别后可调整份量、餐次与食物明细，再确认入库。
-- **营养进度**：查看每日热量、蛋白质、碳水、脂肪、膳食纤维和糖摄入范围。
-- **饮食记录**：通过月历回顾餐食，也可复用历史餐食或补录最近记录。
-- **营养咨询**：结合已确认的本地记录与模型对话，回答内容使用安全 Markdown 渲染。
-- **本地目标**：为符合条件的一般健康成人在本机计算营养目标，身体资料不会发送给模型。
-- **诊断日志**：遇到问题时可从设置页主动导出脱敏日志，日志不会自动上传。
-- **自带模型**：内置阿里云百炼、腾讯混元、智谱 GLM、火山方舟/豆包、MiniMax、硅基流动等预设，也支持自定义兼容接口。
+[**下载最新版 APK**](https://github.com/lztpho/Vita/releases/latest) · [反馈问题](https://github.com/lztpho/Vita/issues) · [隐私说明](PRIVACY.md)
 
-## 应用预览
+</div>
 
-以下为当前界面预览，不包含真实用户信息。
+## 能做什么
+
+| | |
+|---|---|
+| **📷 拍餐识别**<br>拍照或选择相册图片，识别食物、份量与营养范围。 | **📊 今日摄入**<br>查看热量和主要营养素的每日进度。 |
+| **📅 饮食记录**<br>按日历回顾、补录或复用历史餐食。 | **💬 饮食咨询**<br>结合已确认的记录，与模型讨论饮食问题。 |
+
+支持 MiniMax、阿里云百炼、腾讯混元、智谱 GLM、火山方舟/豆包、硅基流动等模型预设，也可填写兼容接口。
+
+## 界面预览
 
 <table>
   <tr>
-    <th width="33%">拍照记录</th>
-    <th width="33%">今日摄入</th>
-    <th width="33%">模型设置</th>
+    <td width="50%" align="center"><img src="docs/assets/screenshots/capture.png" alt="拍餐识别"></td>
+    <td width="50%" align="center"><img src="docs/assets/screenshots/today.png" alt="今日摄入"></td>
   </tr>
   <tr>
-    <td><img src="docs/assets/screenshots/capture.jpg" alt="Vita 拍照记录页面"></td>
-    <td><img src="docs/assets/screenshots/today.jpg" alt="Vita 今日营养页面"></td>
-    <td><img src="docs/assets/screenshots/settings.jpg" alt="Vita 模型设置页面"></td>
+    <td align="center"><strong>拍餐识别</strong><br><sub>拍照、相册与历史复用</sub></td>
+    <td align="center"><strong>今日摄入</strong><br><sub>营养范围与每日进度</sub></td>
   </tr>
   <tr>
-    <td>拍照、相册、历史复用与补录</td>
-    <td>每日营养进度与目标设置</td>
-    <td>模型配置、诊断日志与开源信息</td>
+    <td align="center"><img src="docs/assets/screenshots/records.png" alt="饮食记录"></td>
+    <td align="center"><img src="docs/assets/screenshots/settings.png" alt="模型设置"></td>
+  </tr>
+  <tr>
+    <td align="center"><strong>饮食记录</strong><br><sub>按日历查看历史餐食</sub></td>
+    <td align="center"><strong>模型设置</strong><br><sub>配置模型与管理本地数据</sub></td>
   </tr>
 </table>
 
-## 隐私与安全
+> 截图使用虚构演示内容，不包含真实用户信息。
 
-- 无账号、无遥测，模型请求直接发送到用户配置的厂商。
-- API Key、本地数据库和缩略图均加密保存，设置页可清空全部本地数据。
-- 图片上传前会在本机移除 EXIF/GPS、处理方向并重新编码；原图不会写入 Vita 数据库。
-- 自定义接口仅允许 HTTPS 公网地址。详细边界见 [PRIVACY.md](PRIVACY.md) 和 [SECURITY.md](SECURITY.md)。
+## 开始使用
 
-> Vita 不是医疗设备，不提供诊断或治疗建议。营养目标仅面向符合应用筛查条件的一般健康成人。
+1. 从 [Releases](https://github.com/lztpho/Vita/releases/latest) 下载并安装 APK。
+2. 在设置页选择模型厂商，填写 API Key 和支持图片理解的模型。
+3. 拍照或选择餐食图片，确认识别结果后保存。
 
-## 模型接口
+Vita 不提供内置模型额度，模型请求产生的费用由所选厂商收取。
 
-Vita 支持 OpenAI-compatible 与 Anthropic Messages 协议。模型必须具备图片理解能力；自定义接口无法确认能力时，应用会在测试或餐食识别阶段给出明确提示。
+## 隐私
 
-## 开发
+- 无账号、无遥测；请求只发送给你配置的模型厂商。
+- API Key、本地数据库和缩略图加密保存，餐食图片上传前会移除 EXIF/GPS。
+- 自定义接口仅允许 HTTPS 公网地址，全部本地数据可随时清空。
+
+更多说明见 [PRIVACY.md](PRIVACY.md) 和 [SECURITY.md](SECURITY.md)。
+
+> Vita 不是医疗设备，识别结果和营养建议仅供参考。
+
+<details>
+<summary><strong>开发与构建</strong></summary>
 
 需要 Node.js 22+、JDK 21 和 Android SDK 36。
 
@@ -58,18 +75,16 @@ npm run lint
 npm run android:build
 ```
 
-调试 APK 位于 `android/app/build/outputs/apk/debug/app-debug.apk`。
+参与贡献前请阅读 [CONTRIBUTING.md](CONTRIBUTING.md)，第三方组件许可见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。项目以 [Apache-2.0](LICENSE) 发布。
 
-## 参与项目
+</details>
 
-提交问题前请阅读 [CONTRIBUTING.md](CONTRIBUTING.md)。安全问题请按 [SECURITY.md](SECURITY.md) 中的方式报告。
+---
 
-## 许可证
-
-项目自有部分以 [Apache-2.0](LICENSE) 发布。第三方组件的许可证见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。
-
-## 支持 Vita
+<div align="center">
 
 如果觉得有用的话，可以请作者吃一斤无籽西瓜 🍉
 
-<p align="center"><a href="https://afdian.com/a/lztpho"><strong>点击请作者吃瓜</strong></a></p>
+[**点击请作者吃瓜**](https://afdian.com/a/lztpho)
+
+</div>
