@@ -24,7 +24,7 @@ object MealAnalysisTaskManager {
         val store = SecureStore(appContext)
         val diagnosticLog = DiagnosticLog.from(appContext)
         save(store, taskId, draftId, "queued", "prepare", startedAt, 0, images.length(), 0)
-        diagnosticLog.record("meal_analysis", phase = "queued")
+        diagnosticLog.record("meal_analysis", phase = queuedDiagnosticPhase(notes))
         activeTasks.incrementAndGet()
         MealAnalysisService.start(appContext)
         worker.execute {
@@ -69,6 +69,9 @@ object MealAnalysisTaskManager {
         }
         return taskId
     }
+
+    internal fun queuedDiagnosticPhase(notes: String): String =
+        if (notes.isBlank()) "queued_without_notes" else "queued_with_notes"
 
     fun get(context: Context, taskId: String): JSONObject {
         val appContext = context.applicationContext

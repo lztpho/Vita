@@ -74,6 +74,14 @@ class NutritionEngineTest {
         assertTrue(prompt.contains("每100克营养值"))
     }
 
+    @Test fun analysisPromptTreatsUserPortionNotesAsFacts() {
+        val prompt = NutritionEngine.analysisPrompt(timestamp(12, 30), "米饭只有半碗，鸡肉没有吃皮")
+        assertTrue(prompt.contains("米饭只有半碗，鸡肉没有吃皮"))
+        assertTrue(prompt.contains("必须作为事实约束优先采用，不得忽略"))
+        assertTrue(prompt.contains("必须据此调整每项 amountLabel 和营养范围"))
+        assertTrue(prompt.contains("assumptions 中说明已采用的用户补充"))
+    }
+
     @Test fun invalidMealResponseExplainsModelCapabilityInsteadOfItemCount() {
         val error = assertThrows(IllegalArgumentException::class.java) {
             NutritionEngine.normalizeAnalysis(JSONObject().put("items", JSONArray()), "draft", System.currentTimeMillis(), "", 1)

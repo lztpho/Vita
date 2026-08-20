@@ -5,7 +5,16 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { MealCorrection, RecognitionDetails } from './CapturePage';
+import { currentMealNotes, MealCorrection, RecognitionDetails, RecognitionDisclosure } from './CapturePage';
+
+describe('meal notes', () => {
+  it('reads the latest Android IME value directly before analysis', () => {
+    const textarea = document.createElement('textarea');
+    textarea.value = '  米饭只有半碗，鸡肉没有吃皮  ';
+    expect(currentMealNotes(textarea, '旧状态')).toBe('米饭只有半碗，鸡肉没有吃皮');
+    expect(currentMealNotes(null, '  备用说明  ')).toBe('备用说明');
+  });
+});
 
 describe('MealCorrection', () => {
   let host: HTMLDivElement;
@@ -33,6 +42,30 @@ describe('MealCorrection', () => {
     expect(textarea.value).toBe('');
     await act(async () => { root.unmount(); });
   });
+
+  it('shows an immediate progress indicator while refining the meal', async () => {
+    let finish!: (value: boolean) => void;
+    const onRefine = vi.fn(() => new Promise<boolean>((resolve) => { finish = resolve; }));
+    const root = createRoot(host);
+    await act(async () => { root.render(<MealCorrection busy={false} onRefine={onRefine} />); });
+    const textarea = host.querySelector('textarea') as HTMLTextAreaElement;
+    const button = host.querySelector('button') as HTMLButtonElement;
+    textarea.value = '鸡皮没有吃';
+
+    await act(async () => { button.click(); });
+
+    expect(host.querySelector('.meal-correction')?.getAttribute('aria-busy')).toBe('true');
+    expect(host.querySelector('[role="progressbar"]')?.getAttribute('aria-label')).toBe('修正识别进度');
+    expect(host.querySelector('[role="status"]')?.textContent).toContain('正在根据补充重新识别');
+    expect(button.textContent).toContain('正在修正');
+    expect(button.disabled).toBe(true);
+    expect(textarea.disabled).toBe(true);
+
+    await act(async () => { finish(true); });
+    expect(host.querySelector('[role="progressbar"]')).toBeNull();
+    expect(textarea.value).toBe('');
+    await act(async () => { root.unmount(); });
+  });
 });
 
 describe('meal image pipeline', () => {
@@ -54,6 +87,24 @@ describe('meal image pipeline', () => {
 });
 
 describe('RecognitionDetails', () => {
+  it('is expanded by default and can still be collapsed', async () => {
+    const host = document.createElement('div');
+    document.body.append(host);
+    const root = createRoot(host);
+    await act(async () => { root.render(<RecognitionDisclosure count={2}><p>识别内容</p></RecognitionDisclosure>); });
+    const details = host.querySelector('details') as HTMLDetailsElement;
+
+    expect(details.open).toBe(true);
+    await act(async () => {
+      details.open = false;
+      details.dispatchEvent(new Event('toggle'));
+    });
+    expect(details.open).toBe(false);
+
+    await act(async () => { root.unmount(); });
+    host.remove();
+  });
+
   it('uses the concise private-edition information hierarchy', async () => {
     const host = document.createElement('div');
     document.body.append(host);

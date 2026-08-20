@@ -213,7 +213,9 @@ object NutritionEngine {
         包装食品的正面、配料表和营养成分表属于同一件食物。优先读取包装标示的净含量及每100克营养值，再按预计实际摄入量换算整份营养；同一包装不得跨照片重复计算。
         只输出 JSON：{"confidence":"high|medium|low","nutritionSummary":"一句中文整餐总结","nutritionHighlights":["最多3条"],"nutritionAttention":["最多3条"],"assumptions":["主要估算依据"],"items":[{"name":"单一食物名","amountLabel":"约 100–150 克","confidence":"high|medium|low","assumptions":["该项估算依据"],"nutrients":{"caloriesKcal":{"min":0,"max":0},"proteinG":{"min":0,"max":0},"carbohydrateG":{"min":0,"max":0},"fatG":{"min":0,"max":0},"fiberG":{"min":0,"max":0},"totalSugarG":{"min":0,"max":0},"freeSugarG":{"min":0,"max":0}}}]}
         总糖包括天然糖；游离糖包括添加糖以及蜂蜜、糖浆、果汁中的糖。饮料按普通食物项处理，不另建饮料分类。
-        实际进餐时间毫秒：$consumedAtMs。用户补充：${notes.ifBlank { "无" }}。
+        实际进餐时间毫秒：$consumedAtMs。
+        用户补充（必须作为事实约束优先采用，不得忽略）：${notes.ifBlank { "无" }}。
+        若用户说明了实际份量、数量、未食用部分、去皮去骨或具体食物，这些信息优先于图片推测；必须据此调整每项 amountLabel 和营养范围，并在 assumptions 中说明已采用的用户补充。
         保留估算上下界，不把无法识别的项目编造成精确值。总结和提醒只描述本餐，不做医学诊断。
     """.trimIndent()
 

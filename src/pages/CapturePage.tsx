@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Camera, CameraResultType, CameraSource } from '@capacitor/camera';
 import { Capacitor } from '@capacitor/core';
 import type { MealDraft, MealItem, MealTemplate, Nutrients, Range, SelectedImage } from '../types';
@@ -30,6 +30,10 @@ function confidenceText(value?: MealDraft['confidence']) {
   return value === 'high' ? '识别把握较高' : value === 'low' ? '部分内容需核对' : '识别把握一般';
 }
 
+export function currentMealNotes(input: HTMLTextAreaElement | null, fallback: string) {
+  return (input?.value ?? fallback).trim();
+}
+
 function itemNutrients(item: MealItem) {
   return [
     rangeText(item.nutrients.caloriesKcal, '千卡', 0),
@@ -47,6 +51,14 @@ export function RecognitionDetails({ items, assumptions = [] }: { items: MealIte
     </li>)}</ul>
     {assumptions.length ? <section className="analysis-assumptions"><strong>估算依据</strong><p>{assumptions.join('；')}</p></section> : null}
   </>;
+}
+
+export function RecognitionDisclosure({ count, children }: { count: number; children: ReactNode }) {
+  const [open, setOpen] = useState(true);
+  return <details className="meal-details" open={open} onToggle={(event) => setOpen(event.currentTarget.open)}>
+    <summary>查看识别明细（{count} 项食物）</summary>
+    {children}
+  </details>;
 }
 
 function wait(ms: number) {
@@ -108,19 +120,28 @@ export function MealCorrection({ conversation, busy, onRefine }: {
   onRefine: (message: string) => Promise<boolean>;
 }) {
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const [submitting, setSubmitting] = useState(false);
 
   async function submit() {
     const message = inputRef.current?.value.trim() || '';
-    if (!message || busy) return;
-    if (await onRefine(message)) {
-      if (inputRef.current) inputRef.current.value = '';
-    }
+    if (!message || busy || submitting) return;
+    setSubmitting(true);
+    try {
+      if (await onRefine(message)) {
+        if (inputRef.current) inputRef.current.value = '';
+      }
+    } finally { setSubmitting(false); }
   }
 
-  return <section className="meal-correction">
+  const locked = busy || submitting;
+  return <section className="meal-correction" aria-busy={submitting}>
     <h3>修正识别</h3>
     {conversation?.length ? <div className="correction-thread">{conversation.map((message, index) => <p data-role={message.role} key={`${message.role}-${index}`}>{message.content}</p>)}</div> : null}
-    <form onSubmit={(event) => { event.preventDefault(); void submit(); }}><textarea ref={inputRef} rows={2} maxLength={500} required placeholder="例如：只有两个鸡腿，鸡皮没有吃" aria-label="告诉 Vita 如何修正这餐" /><button className="button button--secondary" disabled={busy}>{busy ? '正在修正…' : '发送修正'}</button></form>
+    <form onSubmit={(event) => { event.preventDefault(); void submit(); }}><textarea ref={inputRef} rows={2} maxLength={500} required disabled={locked} placeholder="例如：只有两个鸡腿，鸡皮没有吃" aria-label="告诉 Vita 如何修正这餐" /><button className="button button--secondary correction-submit" disabled={locked}>{submitting && <span className="loading-spinner" aria-hidden="true" />}{submitting ? '正在修正…' : busy ? '请稍候…' : '发送修正'}</button></form>
+    {submitting && <div className="correction-progress" role="status" aria-live="polite">
+      <div><strong>正在根据补充重新识别</strong><span>请稍候，不要退出当前页面</span></div>
+      <div className="correction-progress__track" role="progressbar" aria-label="修正识别进度"><span /></div>
+    </div>}
   </section>;
 }
 
@@ -139,6 +160,7 @@ export function CapturePage({ onConfirmed }: { onConfirmed: () => void }) {
   const [photo, setPhoto] = useState('');
   const [analysisTask, setAnalysisTask] = useState<MealAnalysisTask>();
   const fileRef = useRef<HTMLInputElement>(null);
+  const notesRef = useRef<HTMLTextAreaElement>(null);
   const imagesRef = useRef<SelectedImage[]>([]);
   const mountedRef = useRef(true);
   const pollingTaskRef = useRef('');
@@ -222,9 +244,11 @@ export function CapturePage({ onConfirmed }: { onConfirmed: () => void }) {
 
   async function analyze() {
     if (!images.length) { setNotice('请先拍照或选择图片。'); return; }
+    const currentNotes = currentMealNotes(notesRef.current, notes);
+    if (currentNotes !== notes) setNotes(currentNotes);
     setBusy(true); setNotice('');
     try {
-      const started = await VitaNative.startMealAnalysis({ images: images.map(({ uri, dataUrl, name }) => ({ uri, dataUrl, name })), consumedAtMs: new Date(consumedAt).getTime(), notes: notes.trim() });
+      const started = await VitaNative.startMealAnalysis({ images: images.map(({ uri, dataUrl, name }) => ({ uri, dataUrl, name })), consumedAtMs: new Date(consumedAt).getTime(), notes: currentNotes });
       setAnalysisTask({ taskId: started.taskId, draftId: '', status: 'queued', phase: 'prepare', startedAt: Date.now(), totalImages: images.length, processedImages: 0, uploadPercent: 0 });
       await pollAnalysis(started.taskId);
     } catch (error) { setNotice(errorText(error)); } finally { setBusy(false); }
@@ -333,7 +357,7 @@ export function CapturePage({ onConfirmed }: { onConfirmed: () => void }) {
           <div className="image-strip">{images.map((image) => <figure key={image.id}><button className="image-preview-button" onClick={() => setPhoto(image.previewUrl)} aria-label="放大查看待分析餐食"><img src={image.previewUrl} alt="待分析餐食" /></button><button className="image-remove-button" onClick={() => removeImage(image.id)} aria-label="移除图片"><Icon name="close" /></button></figure>)}</div>
         </div>}
 
-        <label><span>份量补充（可选）</span><textarea rows={2} value={notes} onChange={(event) => setNotes(event.target.value)} placeholder="例如：米饭半碗，鸡肉没有吃皮" /></label>
+        <label><span>份量补充（可选）</span><textarea ref={notesRef} rows={2} maxLength={500} value={notes} onChange={(event) => setNotes(event.target.value)} placeholder="例如：米饭半碗，鸡肉没有吃皮" /></label>
         <button className="button button--primary button--full" onClick={() => void analyze()} disabled={busy || !images.length}><Icon name="spark" />{busy ? '正在分析…' : '开始分析'}</button>
       </div>
 
@@ -360,8 +384,7 @@ export function CapturePage({ onConfirmed }: { onConfirmed: () => void }) {
           <div>{draft.nutritionHighlights?.length ? <article data-kind="good"><strong>营养亮点</strong><ul>{draft.nutritionHighlights.map((item) => <li key={item}>{item}</li>)}</ul></article> : null}{draft.nutritionAttention?.length ? <article data-kind="attention"><strong>需要关注</strong><ul>{draft.nutritionAttention.map((item) => <li key={item}>{item}</li>)}</ul></article> : null}</div>
         </section>}
 
-        <details className="meal-details" open={draft.recordingMethod === 'historical_reuse'}>
-          <summary>查看识别明细（{draft.items.filter((item) => !item.removed).length} 项食物）</summary>
+        <RecognitionDisclosure key={draft.id} count={draft.items.filter((item) => !item.removed).length}>
           {draft.recordingMethod === 'photo_analysis' ? <RecognitionDetails items={draft.items} assumptions={draft.assumptions} /> : <section className="draft-foods">
           <div className="food-list">{draft.items.map((item) => <article className={item.removed ? 'is-removed' : ''} key={item.id}>
             <div className="food-list__heading"><div><strong>{item.name}</strong><small>{item.amountLabel}</small></div><button className="text-action" onClick={() => void patchDraft({ removedItemIds: item.removed ? draft.items.filter((entry) => entry.removed && entry.id !== item.id).map((entry) => entry.id) : [...draft.items.filter((entry) => entry.removed).map((entry) => entry.id), item.id] })}>{item.removed ? '恢复' : '移除'}</button></div>
@@ -371,7 +394,7 @@ export function CapturePage({ onConfirmed }: { onConfirmed: () => void }) {
           </article>)}</div>
           {draft.assumptions?.length ? <section className="analysis-assumptions"><strong>估算依据</strong><p>{draft.assumptions.join('；')}</p></section> : null}
           </section>}
-        </details>
+        </RecognitionDisclosure>
 
         {draft.recordingMethod === 'historical_reuse' && <div className="portion-control"><strong>调整本次份量</strong><div>{multipliers.map((value) => <button key={value} className={draft.overallMultiplier === value ? 'is-active' : ''} onClick={() => void patchDraft({ overallMultiplier: value })}>{value}×</button>)}</div></div>}
 
