@@ -1,0 +1,35 @@
+// SPDX-License-Identifier: Apache-2.0
+buildscript {
+
+    repositories {
+        google()
+        mavenCentral()
+    }
+    dependencies {
+        classpath 'com.android.tools.build:gradle:8.13.0'
+        classpath 'org.jetbrains.kotlin:kotlin-gradle-plugin:2.2.20'
+    }
+}
+
+plugins {
+    id 'org.cyclonedx.bom' version '3.3.0'
+}
+
+apply from: "variables.gradle"
+
+allprojects {
+    repositories {
+        google()
+        mavenCentral()
+    }
+    configurations.configureEach {
+        resolutionStrategy.force 'androidx.exifinterface:exifinterface:1.4.2'
+    }
+    tasks.matching { it.name == 'cyclonedxDirectBom' }.configureEach {
+        includeConfigs = ['releaseRuntimeClasspath']
+    }
+}
+
+task clean(type: Delete) {
+    delete rootProject.buildDir
+}

@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<resources>
+    <color name="colorPrimary">#252A5A</color>
+    <color name="colorPrimaryDark">#191D43</color>
+    <color name="colorAccent">#F59E72</color>
+</resources>
