@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="420" height="80" viewBox="0 0 420 80" role="img" aria-labelledby="title desc">
+  <title id="title">点击请作者吃瓜</title>
+  <desc id="desc">前往爱发电支持 Vita</desc>
+  <defs>
+    <linearGradient id="button" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#2d3272"/>
+      <stop offset="1" stop-color="#20255d"/>
+    </linearGradient>
+    <filter id="shadow" x="-10%" y="-25%" width="120%" height="165%">
+      <feDropShadow dx="0" dy="5" stdDeviation="5" flood-color="#20255d" flood-opacity=".22"/>
+    </filter>
+  </defs>
+  <rect x="4" y="4" width="412" height="68" rx="22" fill="url(#button)" filter="url(#shadow)"/>
+  <circle cx="48" cy="38" r="24" fill="#fff" fill-opacity=".1"/>
+  <g transform="translate(22 19)">
+    <path d="M3 7h46c-1.8 15-11 25-23 25S4.8 22 3 7Z" fill="#24875a"/>
+    <path d="M6.5 7h39c-1.7 12.3-9.4 20.5-19.5 20.5S8.2 19.3 6.5 7Z" fill="#f4f1cf"/>
+    <path d="M9.5 7h33c-1.5 9.5-8 16-16.5 16S11 16.5 9.5 7Z" fill="#ff6f79"/>
+    <path d="m17 12 1.8 3m7.2-3.5V15m8-3-1.8 3" fill="none" stroke="#553247" stroke-width="1.8" stroke-linecap="round"/>
+    <path d="M12 7h28" stroke="#ff98a0" stroke-width="1.4" stroke-linecap="round" opacity=".9"/>
+  </g>
+  <text x="229" y="49" text-anchor="middle" fill="#fff" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="21" font-weight="700" letter-spacing=".5">点击请作者吃瓜</text>
+  <circle cx="385" cy="38" r="15" fill="#fff" fill-opacity=".1"/>
+  <path d="m381 32 6 6-6 6" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

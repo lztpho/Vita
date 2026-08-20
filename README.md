@@ -24,24 +24,29 @@
 
 ## 界面预览
 
-<table>
-  <tr>
-    <td width="50%" align="center"><img src="docs/assets/screenshots/capture.png" alt="拍餐识别"></td>
-    <td width="50%" align="center"><img src="docs/assets/screenshots/today.png" alt="今日摄入"></td>
-  </tr>
-  <tr>
-    <td align="center"><strong>拍餐识别</strong><br><sub>拍照、相册与历史复用</sub></td>
-    <td align="center"><strong>今日摄入</strong><br><sub>营养范围与每日进度</sub></td>
-  </tr>
-  <tr>
-    <td align="center"><img src="docs/assets/screenshots/records.png" alt="饮食记录"></td>
-    <td align="center"><img src="docs/assets/screenshots/settings.png" alt="模型设置"></td>
-  </tr>
-  <tr>
-    <td align="center"><strong>饮食记录</strong><br><sub>按日历查看历史餐食</sub></td>
-    <td align="center"><strong>模型设置</strong><br><sub>配置模型与管理本地数据</sub></td>
-  </tr>
-</table>
+### 拍餐识别
+
+拍照、相册与历史复用，识别前可以补充实际份量。
+
+<p align="center"><img src="docs/assets/screenshots/capture.png" width="520" alt="拍餐识别"></p>
+
+### 今日摄入
+
+集中查看热量和主要营养素的当天进度。
+
+<p align="center"><img src="docs/assets/screenshots/today.png" width="520" alt="今日摄入"></p>
+
+### 饮食记录
+
+按日历回顾已经确认的餐食。
+
+<p align="center"><img src="docs/assets/screenshots/records.png" width="520" alt="饮食记录"></p>
+
+### 模型设置
+
+配置模型、导出日志或管理本地数据。
+
+<p align="center"><img src="docs/assets/screenshots/settings.png" width="520" alt="模型设置"></p>
 
 > 截图使用虚构演示内容，不包含真实用户信息。
 
@@ -85,6 +90,6 @@ npm run android:build
 
 如果觉得有用的话，可以请作者吃一斤无籽西瓜 🍉
 
-[**点击请作者吃瓜**](https://afdian.com/a/lztpho)
+<a href="https://afdian.com/a/lztpho"><img src="docs/assets/sponsor-watermelon.svg" width="360" alt="点击请作者吃瓜"></a>
 
 </div>
